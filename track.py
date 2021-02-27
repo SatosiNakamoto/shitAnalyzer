@@ -86,6 +86,12 @@ class Map():
 			self.map[int(p[0]),int(p[1])] = np.nan
 		print("######################")
 
+
+	#generalize
+	def cropShiftPart(self, xstart, xend = None):
+		xend = self.map.shape[1]
+		return self.map[0:self.map.shape[0], xstart:xend]
+
 	#0 for left
 	#1 for right
 	#works only when its first frame of truck
@@ -178,9 +184,10 @@ class Matcher():
  		self.map2 = None
  		self.frame1 = None
  		self.frame2 = None
- 		self.mapShif = None
+ 		self.mapShift = None
  		#0 - from left; 1 - from right
  		self.sideWhereMoveingFrom = -1
+ 		#make own wrapper...
  		self.contourCoor = None
 
 	def drawMatches(self):
@@ -206,7 +213,7 @@ class Matcher():
 			cv.circle(out, (int(x2)+cols1,int(y2)), 4, (255, 0, 0), 1)
 			cv.line(out, (int(x1),int(y1)), (int(x2)+cols1,int(y2)), (255,0,0), 1)
 		print("-----------------")
-		cv.line(out, (640 + int(self.delta), 0), (640 + int(self.delta), 480), (0, 255, 0), thickness=2)
+		cv.line(out, (640*2 + int(self.delta), 0), (640*2 + int(self.delta), 480), (0, 255, 0), thickness=2)
 		cv.imshow('Matched Features', out)
 		#cv.destroyWindow('Matched Features')
 		
@@ -275,8 +282,8 @@ class Matcher():
 		#cv.imshow("contours", self.img2)
 		#cv.waitKey(0)
 	
-	def findFirstMapMask(self):
-		self.contourCoor = 
+	#def findFirstMapMask(self):
+	
 
 	def calcMapShift(self):
 		if self.delta > 0:
@@ -289,11 +296,79 @@ class Matcher():
 		print("side is" + str(self.sideWhereMoveingFrom))
 		print("delta is " +  str(self.delta))
 		if self.sideWhereMoveingFrom == 1:
-			self.mapShif = Map(self.map2.map[ 0:self.map2.map.shape[0], self.map2.map.shape[1] + self.delta:self.map2.map.shape[1] ])
+			self.mapShift = Map(self.map2.map[ 0:self.map2.map.shape[0], self.map2.map.shape[1] + self.delta:self.map2.map.shape[1] ])
 		elif self.sideWhereMoveingFrom	 == 0:
-			self.mapShif = Map(self.map1.map[0:self.map1.map.shape[0], 0:self.delta])
+			self.mapShift = Map(self.map1.map[0:self.map1.map.shape[0], 0:self.delta])
+
+	def shiftCountourCoordinates(self):
+		print("before" + str(self.contourCoor))
+		resCoor = []
+		for i in self.contourCoor:
+			i = i + self.delta
+			resCoor.append(i)
+		self.contourCoor = resCoor
+		print("after" + str(self.contourCoor))
+
+#shadow of truck constructed from frames and its maps
+class Shadow():
+	def __init__(self):
+		self.shadowNodesList = []
+
+
+class ShadowNode():
+	def __init__(self):
+		self.pointerToNextShadowNode = None
+		self.nodeMap = None
+		self.nodeFrame = None
+		
+
+def printContrs(n):
+	c = 0
+	imagesList = []
+	for i in os.listdir("img/image/"):
+		if c > n:
+			break
+		c = c + 1
+
+		print("img/images/" + i)
+		im = MapFrameType(i.split(".")[0], "img/image/", "img/array10/")
+		imagesList.append(im)
+		#cv.imshow("i",i)
+		#cv.waitKey(0)
+	framePairs = []
+	for i in range(len(imagesList)):
+		if i + 1 >= len(imagesList):
+			break
+		framePairs.append((imagesList[i], imagesList[i+1]))
+	initFrames = True
+	#отсюда можно найти длину грузовика (не самый лучший способ, как по мне) но мне ооочень не нраваится то, как это написано!!!ужас
+	prevCoor = None
+	shadow = Shadow()
+	for pair in framePairs:
+		matcher = Matcher()
+
+		matcher.compareTwoFrame(pair[0], pair[1])
+		if initFrames:
+			matcher.findCountoursOftruck()
+			initFrames = False
+			shadow.shadowNodesList.append(Map(matcher.map1.cropShiftPart(matcher.contourCoor[0])))
+		else:
+			matcher.contourCoor = prevCoor
+		#matcher.drawMatches()
+		matcher.calcMapShift()
+		matcher.shiftCountourCoordinates()
+		shadow.shadowNodesList.append(matcher.mapShift)
+		prevCoor = matcher.contourCoor
+		#matcher.mapShift.showMap()
+		#plt.show()
+		#cv.waitKey(0)
+	for s in shadow.shadowNodesList:
+		plt.imshow(s.map)
+		plt.show()
+
 
 #mp = mapProcessor("img/")
+printContrs(15)
 mf1 = MapFrameType("22-02-2021-00-06-42-259410", "img/image/", "img/array10/")
 mf2 = MapFrameType("22-02-2021-00-06-42-389983", "img/image/", "img/array10/")
 matcher = Matcher()
@@ -303,7 +378,7 @@ cv.waitKey(0)
 matcher.findCountoursOftruck()
 matcher.drawMatches()
 matcher.calcMapShift()
-matcher.mapShif.showMap()
+matcher.mapShift.showMap()
 print(matcher.contourCoor)
 plt.show()
 cv.waitKey(0)
