@@ -19,6 +19,7 @@ from PIL import Image
 
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
+from itertools import tee
 
 upperBorder = 5700 #5700
 bottomBorder = 1000
@@ -31,6 +32,13 @@ def sign(a):
 		return -1
 	else:
 		return 0
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
 
 class MapFrameType():
 	def __init__(self, date, pathImg = None, pathArr = None):
@@ -91,7 +99,9 @@ class Map():
 	def cropShiftPart(self, xstart, xend = None):
 		xend = self.map.shape[1]
 		return self.map[0:self.map.shape[0], xstart:xend]
-
+	def cropWindowPart(self, xstart, xend):
+		return self.map[0:self.map.shape[0], xstart:xend]
+		
 	#0 for left
 	#1 for right
 	#works only when its first frame of truck
@@ -309,18 +319,73 @@ class Matcher():
 		self.contourCoor = resCoor
 		print("after" + str(self.contourCoor))
 
+
 #shadow of truck constructed from frames and its maps
 class Shadow():
 	def __init__(self):
 		self.shadowNodesList = []
 
+	def showShadow(self):
+		for s in self.shadowNodesList:
+			plt.imshow(s.nodeMap)
+			plt.show()
+
+	def showShadow(self):
+		plotDimensionX = 10
+		plotDimensionY = 10
+		#plt.subplot(plotDimensionX, plotDimensionY, 30)
+		for shd in self.shadowNodesList:
+			for view in shd.otherViews:
+				plt.imshow(view)
+				plt.show()
+
 
 class ShadowNode():
 	def __init__(self):
-		self.pointerToNextShadowNode = None
+		self.otherViews = []
 		self.nodeMap = None
 		self.nodeFrame = None
+		self.shiftValue = None
+		self.originalMap = None
 		
+	def setShadowNodeMap(self, map):
+		self.nodeMap = map
+	def setOriginalMap(self, m):
+		self.originalMap = m
+
+	def helpPreviousShadow(self, deltas, num):
+		coors = []
+		sum = 0
+		for d in reversed(deltas[:num + 1]):
+			sum = sum + d
+			coors.append(sum)
+		parts = []
+		if len(coors) > 1:
+			coors.insert(0, 0)
+		print("soors is " + str(coors))
+		'''
+		for c in range(len(coors)):
+			if c+1 >= len(coors):
+				continue
+			plt.imshow(self.originalMap.map)
+			plt.show()
+
+			#check side here!!!???
+			print(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1])
+			parts.append(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1]))
+			plt.imshow(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1]))
+			plt.show()
+		'''
+		for c1, c2 in pairwise(coors):
+			#plt.imshow(self.originalMap.map)
+			#plt.show()
+			#print(self.originalMap.map.shape[1] + c1,self.originalMap.map.shape[1] + c2)
+			#check side here!!!???
+			plt.imshow(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + c2, self.originalMap.map.shape[1] + c1))
+			plt.show()
+
+		return parts
+
 
 def printContrs(n):
 	c = 0
@@ -333,53 +398,79 @@ def printContrs(n):
 		print("img/images/" + i)
 		im = MapFrameType(i.split(".")[0], "img/image/", "img/array10/")
 		imagesList.append(im)
-		#cv.imshow("i",i)
-		#cv.waitKey(0)
 	framePairs = []
 	for i in range(len(imagesList)):
 		if i + 1 >= len(imagesList):
 			break
 		framePairs.append((imagesList[i], imagesList[i+1]))
 	initFrames = True
+	
 	#отсюда можно найти длину грузовика (не самый лучший способ, как по мне) но мне ооочень не нраваится то, как это написано!!!ужас
 	prevCoor = None
 	shadow = Shadow()
+	deltas = []
 	for pair in framePairs:
 		matcher = Matcher()
 
 		matcher.compareTwoFrame(pair[0], pair[1])
 		if initFrames:
 			matcher.findCountoursOftruck()
+			deltas.append(matcher.map2.map.shape[1] - matcher.contourCoor[0])
+			#plt.imshow(matcher.map2.map)
+			#plt.show()
+			shadowNodeAppend = ShadowNode()
+			shadowNodeAppend.setOriginalMap(matcher.map2)
+			shadowNodeAppend.setShadowNodeMap(Map(matcher.map1.cropShiftPart(matcher.contourCoor[0])))
+			shadow.shadowNodesList.append(shadowNodeAppend)
 			initFrames = False
-			shadow.shadowNodesList.append(Map(matcher.map1.cropShiftPart(matcher.contourCoor[0])))
 		else:
 			matcher.contourCoor = prevCoor
-		#matcher.drawMatches()
-		matcher.calcMapShift()
-		matcher.shiftCountourCoordinates()
-		shadow.shadowNodesList.append(matcher.mapShift)
-		prevCoor = matcher.contourCoor
-		#matcher.mapShift.showMap()
+		#plt.imshow(matcher.map2.map)
 		#plt.show()
-		#cv.waitKey(0)
-	for s in shadow.shadowNodesList:
-		plt.imshow(s.map)
-		plt.show()
+		matcher.calcMapShift()
+		deltas.append(matcher.delta)
+		matcher.shiftCountourCoordinates()
+		shadowNodeAppend = ShadowNode()
+		shadowNodeAppend.setOriginalMap(matcher.map2)
+		shadowNodeAppend.setShadowNodeMap(matcher.mapShift)
+		shadow.shadowNodesList.append(shadowNodeAppend)
+		prevCoor = matcher.contourCoor
 
+	print("+++++++++++++++++++++")
+	deltas[0] = deltas[0] * sign(deltas[1])
+	for mi in range(len(shadow.shadowNodesList)):
+		shadow.shadowNodesList[mi].shiftValue = deltas[mi]
+		#plt.imshow(shadow.shadowNodesList[mi].nodeMap.map)
+		print(shadow.shadowNodesList[mi].shiftValue)
+		#plt.show()
+
+	numberOfShadow = 0
+	for shd in shadow.shadowNodesList:
+		helperMaps = shd.helpPreviousShadow(deltas, numberOfShadow)
+		numberOfShadow = numberOfShadow + 1
+		#for i in helperMaps:
+			#plt.imshow(i)
+			#plt.show()
+		for i in range(len(helperMaps)):
+			shadow.shadowNodesList[i].otherViews.append(helperMaps[i])
+	return shadow
 
 #mp = mapProcessor("img/")
-printContrs(15)
+shadow = printContrs(15)
+#shadow.showShadow()
+
+
 mf1 = MapFrameType("22-02-2021-00-06-42-259410", "img/image/", "img/array10/")
 mf2 = MapFrameType("22-02-2021-00-06-42-389983", "img/image/", "img/array10/")
 matcher = Matcher()
 matchesList = matcher.compareTwoFrame(mf1,mf2)
 cv.waitKey(0)
 
-matcher.findCountoursOftruck()
-matcher.drawMatches()
-matcher.calcMapShift()
-matcher.mapShift.showMap()
-print(matcher.contourCoor)
+#matcher.findCountoursOftruck()
+#matcher.drawMatches()
+#matcher.calcMapShift()
+#matcher.mapShift.showMap()
+#print(matcher.contourCoor)
 plt.show()
 cv.waitKey(0)
 print("lol")
