@@ -16,7 +16,7 @@ from skimage.util import img_as_float
 from skimage import io
 from skimage import measure
 from PIL import Image
-
+from scipy.ndimage.filters import gaussian_filter
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
 from itertools import tee
@@ -24,6 +24,8 @@ from itertools import tee
 upperBorder = 5700 #5700
 bottomBorder = 1000
 signTrue = lambda a: (a>0) - (a<0)
+defaultHeight = 480
+defaultWidth  = 640
 
 def sign(a):
 	if a > 0:
@@ -85,14 +87,14 @@ class Map():
 	#works strange.................
 	def setFeaturePoints(self,points):
 		self.map[300, 300] = np.nan
-		print(self.map[300, 300])
-		print("######################")
+		#print(self.map[300, 300])
+		#print("######################")
 		for p in points:
 			if p[0] >= 480 or p[1] >= 640:
 				continue
-			print(str(int(p[0])) + " " + str(int(p[1])))
+			#print(str(int(p[0])) + " " + str(int(p[1])))
 			self.map[int(p[0]),int(p[1])] = np.nan
-		print("######################")
+		#print("######################")
 
 
 	#generalize
@@ -111,8 +113,8 @@ class Map():
 		window = self.map[0:self.map.shape[1], 0:halfOfColumns]
 		leftHalf = window.sum()
 		rightHalf = self.map.sum() - leftHalf
-		print("right half - " + str(rightHalf))
-		print("left half  - " + str(leftHalf))
+		#print("right half - " + str(rightHalf))
+		#print("left half  - " + str(leftHalf))
 		
 		if leftHalf > rightHalf:
 			return 0
@@ -211,18 +213,18 @@ class Matcher():
 		out[:rows2,cols1:] = np.dstack([self.img2, self.img2, self.img2])
 		sumSpeed = 0
 		countOfChangedPoints = 0
-		print("-----------------")
+		#print("-----------------")
 		for mat in self.perfectMatches:
 			img1_idx = mat.queryIdx
 			img2_idx = mat.trainIdx
 
 			(x1,y1) = self.kp1[img1_idx].pt
 			(x2,y2) = self.kp2[img2_idx].pt
-			print(str(x1) + " " + str(y1) + "                 " + str(x2) + " " + str(y2))
+			#print(str(x1) + " " + str(y1) + "                 " + str(x2) + " " + str(y2))
 			cv.circle(out, (int(x1),int(y1)), 4, (255, 0, 0), 1)   
 			cv.circle(out, (int(x2)+cols1,int(y2)), 4, (255, 0, 0), 1)
 			cv.line(out, (int(x1),int(y1)), (int(x2)+cols1,int(y2)), (255,0,0), 1)
-		print("-----------------")
+		#print("-----------------")
 		cv.line(out, (640*2 + int(self.delta), 0), (640*2 + int(self.delta), 480), (0, 255, 0), thickness=2)
 		cv.imshow('Matched Features', out)
 		#cv.destroyWindow('Matched Features')
@@ -267,7 +269,7 @@ class Matcher():
 			countOfChangedPoints = countOfChangedPoints + 1
 			directionSum = directionSum + sign(x2-x1)
 		self.delta = int(sumSpeed/countOfChangedPoints) * sign(directionSum)
-		print("delta is" + str(self.delta))
+		#print("delta is" + str(self.delta))
 		return self.perfectMatches
 	
 	def findCountoursOftruck(self):
@@ -276,13 +278,13 @@ class Matcher():
 		_, thresh = cv.threshold(blur, 20, 255, cv.THRESH_BINARY)
 		dilated = cv.dilate(thresh, None, iterations=3)
 		сontours, _ = cv.findContours(dilated, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-		print("cont len is" + str(len(сontours)))
+		#print("cont len is" + str(len(сontours)))
 		good_cont = []
 
 		#ADD SORTINQ AND FILTERING PLS
 		for contour in сontours:
 			(x, y, w, h) = cv.boundingRect(contour)
-			print(cv.contourArea(contour))
+			#print(cv.contourArea(contour))
 			if  cv.contourArea(contour) < 20000 or cv.contourArea(contour) > 100000:  
 				continue
 			good_cont.append(contour)
@@ -303,21 +305,21 @@ class Matcher():
 		else:
 			self.sideWhereMoveingFrom = -1
 
-		print("side is" + str(self.sideWhereMoveingFrom))
-		print("delta is " +  str(self.delta))
+		#print("side is" + str(self.sideWhereMoveingFrom))
+		#print("delta is " +  str(self.delta))
 		if self.sideWhereMoveingFrom == 1:
 			self.mapShift = Map(self.map2.map[ 0:self.map2.map.shape[0], self.map2.map.shape[1] + self.delta:self.map2.map.shape[1] ])
 		elif self.sideWhereMoveingFrom	 == 0:
 			self.mapShift = Map(self.map1.map[0:self.map1.map.shape[0], 0:self.delta])
 
 	def shiftCountourCoordinates(self):
-		print("before" + str(self.contourCoor))
+		#print("before" + str(self.contourCoor))
 		resCoor = []
 		for i in self.contourCoor:
 			i = i + self.delta
 			resCoor.append(i)
 		self.contourCoor = resCoor
-		print("after" + str(self.contourCoor))
+		#print("after" + str(self.contourCoor))
 
 
 #shadow of truck constructed from frames and its maps
@@ -326,19 +328,30 @@ class Shadow():
 		self.shadowNodesList = []
 
 	def showShadow(self):
-		for s in self.shadowNodesList:
-			plt.imshow(s.nodeMap)
-			plt.show()
-
-	def showShadow(self):
-		plotDimensionX = 10
-		plotDimensionY = 10
-		#plt.subplot(plotDimensionX, plotDimensionY, 30)
+		c = 0
 		for shd in self.shadowNodesList:
-			for view in shd.otherViews:
-				plt.imshow(view)
+			print("view number " + str(c) + " len is " + str(len(shd.otherViews)))
+			#plt.imshow(shd.originalMap.map)
+			#plt.show()
+			c = c + 1
+			for i in shd.otherViews:
+				plt.imshow(i)
 				plt.show()
 
+
+			#plt.plot(range(len(shd.otherViews)))
+			#plt.figure()
+			#for i in shd.otherViews:
+			#	plt.imshow(i)
+			#plt.show()
+			#for view in shd.otherViews:
+				#plt.plot(range(10))
+				#plt.figure()
+				#plt.plot(range(10), 'ro-')
+				#plt.imshow(view)
+				#print("view number " + str(c) + " len is " + len(shd.otherViews))
+				#c = c + 1
+			#plt.show()
 
 class ShadowNode():
 	def __init__(self):
@@ -362,28 +375,14 @@ class ShadowNode():
 		parts = []
 		if len(coors) > 1:
 			coors.insert(0, 0)
-		print("soors is " + str(coors))
-		'''
-		for c in range(len(coors)):
-			if c+1 >= len(coors):
-				continue
-			plt.imshow(self.originalMap.map)
-			plt.show()
+		#print("soors is " + str(coors))
 
-			#check side here!!!???
-			print(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1])
-			parts.append(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1]))
-			plt.imshow(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + coors[c], self.originalMap.map.shape[1] + coors[c + 1]))
-			plt.show()
-		'''
 		for c1, c2 in pairwise(coors):
-			#plt.imshow(self.originalMap.map)
-			#plt.show()
-			#print(self.originalMap.map.shape[1] + c1,self.originalMap.map.shape[1] + c2)
-			#check side here!!!???
-			plt.imshow(self.originalMap.cropWindowPart(self.originalMap.map.shape[1] + c2, self.originalMap.map.shape[1] + c1))
-			plt.show()
-
+			startWindow = self.originalMap.map.shape[1] + c2
+			endWindow   = self.originalMap.map.shape[1] + c1
+			if startWindow < self.originalMap.map.shape[1] and endWindow < self.originalMap.map.shape[1] and startWindow > 0 and endWindow > 0:#не круто, например первый фрейм просто вылетит 
+				parts.append(self.originalMap.cropWindowPart(startWindow, endWindow))
+			
 		return parts
 
 
@@ -395,7 +394,7 @@ def printContrs(n):
 			break
 		c = c + 1
 
-		print("img/images/" + i)
+		#print("img/images/" + i)
 		im = MapFrameType(i.split(".")[0], "img/image/", "img/array10/")
 		imagesList.append(im)
 	framePairs = []
@@ -429,6 +428,7 @@ def printContrs(n):
 		#plt.show()
 		matcher.calcMapShift()
 		deltas.append(matcher.delta)
+		print(deltas)
 		matcher.shiftCountourCoordinates()
 		shadowNodeAppend = ShadowNode()
 		shadowNodeAppend.setOriginalMap(matcher.map2)
@@ -436,31 +436,174 @@ def printContrs(n):
 		shadow.shadowNodesList.append(shadowNodeAppend)
 		prevCoor = matcher.contourCoor
 
-	print("+++++++++++++++++++++")
 	deltas[0] = deltas[0] * sign(deltas[1])
 	for mi in range(len(shadow.shadowNodesList)):
 		shadow.shadowNodesList[mi].shiftValue = deltas[mi]
-		#plt.imshow(shadow.shadowNodesList[mi].nodeMap.map)
-		print(shadow.shadowNodesList[mi].shiftValue)
-		#plt.show()
 
 	numberOfShadow = 0
 	for shd in shadow.shadowNodesList:
-		helperMaps = shd.helpPreviousShadow(deltas, numberOfShadow)
+		helperMaps = list(reversed(shd.helpPreviousShadow(deltas, numberOfShadow)))
 		numberOfShadow = numberOfShadow + 1
-		#for i in helperMaps:
-			#plt.imshow(i)
-			#plt.show()
+		
+		for i in helperMaps:
+			plt.imshow(i)
+			plt.show()
+		print("+++++++++++++++++++++++++++++++++++++++")
+		
 		for i in range(len(helperMaps)):
-			shadow.shadowNodesList[i].otherViews.append(helperMaps[i])
+			shadow.shadowNodesList[i].otherViews.append(helperMaps[i])#не то добавляешь ни туда
 	return shadow
 
+class Truck():
+	def __init__(self):
+		self.pieces = []
+
+	def initPiece(self, p):
+		self.pieces.append(p)
+		
+	def addPiece(self, p):
+		self.pieces.append(p)
+	
+	def update(self, map, delta):
+		for pi in self.pieces:
+			pi.update(delta, map)
+
+	def showTruck(self):
+		for pi in self.pieces:
+			print(len(pi.otherViews))
+			for i in pi.otherViews:
+				plt.imshow(i)
+				plt.show()
+
+	def assemblyTruck(self):
+		sums = []
+		self.truckLen = 1200
+		truckMatrice = np.ndarray(shape=(defaultHeight, self.truckLen), dtype=float, order='F')
+		constructed = sumV = self.pieces[0].otherViews[0]
+		for pi in range(len(self.pieces)):
+			sumV = self.pieces[pi].otherViews[0]
+			#print("++++++++++++++++")
+			sumOffset = self.pieces[pi].otherViews[0].shape[1]
+			for vi in range(len(self.pieces[pi].otherViews)):
+				if vi + 1 >= len(self.pieces[pi].otherViews):
+					#print("skeep")
+					continue
+				#print("sizes ", sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1],sumV.shape[1])
+			
+				#plt.figure(1)
+				#plt.imshow(sumV[0:sumV.shape[0], sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1]:sumV.shape[1]])
+				#plt.show()
+				#plt.figure(2)
+				#plt.imshow(self.pieces[pi].otherViews[vi+1])
+				#plt.show()
+				if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
+					continue
+
+				sumV[0:sumV.shape[0], sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1]:sumV.shape[1]] += self.pieces[pi].otherViews[vi+1]
+				
+				#plt.figure(3)
+				#print("sum is")
+				#plt.imshow(sumV)
+				#plt.show()
+			#print("----------")
+			#plt.imshow(sumV)
+			#plt.show()
+			sums.append(sumV)
+			#plt.imshow(sumV)
+			#plt.show()
+			#print("NODE END")
+
+		prev = 0
+		for sumi in sums:
+			#plt.imshow(sumi)
+			#plt.show()
+			print("prev: ",prev, " shape: ", sumi.shape[1])
+			truckMatrice[0:truckMatrice.shape[0], prev:prev + sumi.shape[1]] = sumi
+			prev =prev +  sumi.shape[1]
+		blurred = median_filter(truckMatrice, size = 8)
+
+		plt.imshow(truckMatrice)
+		plt.show()
+		plt.imshow(blurred)
+		plt.show()
+
+class Piece():
+	def __init__(self):
+		self.x = -1
+		self.length = -1
+		self.otherViews = []
+
+	def start(self, x, len, view):
+		self.x = x
+		self.length = len
+		self.otherViews.append(view.cropWindowPart(self.x, view.map.shape[1]))
+		
+	def update(self, delta, map):
+		#SIGN
+		self.x = self.x + delta
+		
+		if self.x < 0:
+			self.x = 0
+			self.length = self.length + delta
+
+		crop = map.cropWindowPart(self.x, self.x + self.length)
+		self.otherViews.append(crop)
+			
+
+def constructContrs(n):
+	c = 0
+	imagesList = []
+	for i in os.listdir("img/image/"):
+		if c > n:
+			break
+		c = c + 1
+		im = MapFrameType(i.split(".")[0], "img/image/", "img/array10/")
+		imagesList.append(im)
+	framePairs = []
+	for i in range(len(imagesList)):
+		if i + 1 >= len(imagesList):
+			break
+		framePairs.append((imagesList[i], imagesList[i+1]))
+	initFrames = True
+	
+	prevCoor = None
+	truck = Truck()
+
+	for pair in framePairs:
+		matcher = Matcher()
+		matcher.compareTwoFrame(pair[0], pair[1])
+		
+		if initFrames:
+			matcher.findCountoursOftruck()
+			piece = Piece()
+			piece.start(matcher.contourCoor[0], matcher.map2.map.shape[1] - matcher.contourCoor[0], matcher.map2)
+			
+			truck.initPiece(piece)
+			initFrames = False
+			continue
+		else:
+			matcher.contourCoor = prevCoor
+		
+		#matcher.calcMapShift()
+		#matcher.shiftCountourCoordinates()
+		piece = Piece()
+		#SIGN?
+		#print(matcher.delta)
+		piece.start(matcher.map2.map.shape[1] + matcher.delta, abs(matcher.delta), matcher.map2)
+			
+		truck.update(matcher.map2, matcher.delta)
+		truck.addPiece(piece)
+		prevCoor = matcher.contourCoor
+	truck.assemblyTruck()
+	#truck.showTruck()
+	
 #mp = mapProcessor("img/")
-shadow = printContrs(15)
+shadow = constructContrs(13)
 #shadow.showShadow()
 
-
+'''
 mf1 = MapFrameType("22-02-2021-00-06-42-259410", "img/image/", "img/array10/")
+plt.show()
 mf2 = MapFrameType("22-02-2021-00-06-42-389983", "img/image/", "img/array10/")
 matcher = Matcher()
 matchesList = matcher.compareTwoFrame(mf1,mf2)
@@ -471,6 +614,7 @@ cv.waitKey(0)
 #matcher.calcMapShift()
 #matcher.mapShift.showMap()
 #print(matcher.contourCoor)
+'''
 plt.show()
 cv.waitKey(0)
 print("lol")
