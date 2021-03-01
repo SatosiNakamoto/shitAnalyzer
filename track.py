@@ -201,6 +201,7 @@ class Matcher():
  		self.sideWhereMoveingFrom = -1
  		#make own wrapper...
  		self.contourCoor = None
+ 		self.vect = (0,0)
 
 	def drawMatches(self):
 		rows1 = self.img1.shape[0]
@@ -253,6 +254,7 @@ class Matcher():
 		sumSpeed = 0
 		countOfChangedPoints = 0
 		directionSum = 0
+		featuresVectors = []
 		for mat in retdescs:
 			img1_idx = mat.queryIdx
 			img2_idx = mat.trainIdx
@@ -262,6 +264,7 @@ class Matcher():
 			
 			if abs(x2 - x1) < 5 and abs(y2 - y1) < 5:
 				continue
+			
 
 			self.perfectMatches.append(mat)
 			pathVectorLen = math.sqrt( (x2 - x1) * (x2-x1) + (y2-y1)*(y2-y1))
@@ -457,6 +460,7 @@ def printContrs(n):
 class Truck():
 	def __init__(self):
 		self.pieces = []
+		self.side = -1
 
 	def initPiece(self, p):
 		self.pieces.append(p)
@@ -464,9 +468,9 @@ class Truck():
 	def addPiece(self, p):
 		self.pieces.append(p)
 	
-	def update(self, map, delta):
+	def update(self, map, delta, side):
 		for pi in self.pieces:
-			pi.update(delta, map)
+			pi.update(delta, map, side)
 
 	def showTruck(self):
 		for pi in self.pieces:
@@ -477,7 +481,7 @@ class Truck():
 
 	def assemblyTruck(self):
 		sums = []
-		self.truckLen = 1200
+		self.truckLen = 1100
 		truckMatrice = np.ndarray(shape=(defaultHeight, self.truckLen), dtype=float, order='F')
 		constructed = sumV = self.pieces[0].otherViews[0]
 		for pi in range(len(self.pieces)):
@@ -496,11 +500,22 @@ class Truck():
 				#plt.figure(2)
 				#plt.imshow(self.pieces[pi].otherViews[vi+1])
 				#plt.show()
-				if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
-					continue
 
-				sumV[0:sumV.shape[0], sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1]:sumV.shape[1]] += self.pieces[pi].otherViews[vi+1]
-				
+				if self.side == 1:
+					if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
+						continue
+
+					sumV[0:sumV.shape[0], sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1]:sumV.shape[1]] += self.pieces[pi].otherViews[vi+1]
+				if self.side == 0:
+					if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
+						continue
+					#plt.imshow(sumV)
+					#plt.show()
+					#plt.imshow(self.pieces[pi].otherViews[vi+1])
+					#plt.show()
+					sumV[0:sumV.shape[0], 0:self.pieces[pi].otherViews[vi+1].shape[1]] += self.pieces[pi].otherViews[vi+1]
+					#plt.imshow(sumV)
+					#plt.show()
 				#plt.figure(3)
 				#print("sum is")
 				#plt.imshow(sumV)
@@ -513,50 +528,93 @@ class Truck():
 			#plt.show()
 			#print("NODE END")
 
-		prev = 0
+		if self.side == 1:
+			prev = 0
+		elif self.side == 0:
+			prev = truckMatrice.shape[1]
 		for sumi in sums:
 			#plt.imshow(sumi)
 			#plt.show()
 			print("prev: ",prev, " shape: ", sumi.shape[1])
-			truckMatrice[0:truckMatrice.shape[0], prev:prev + sumi.shape[1]] = sumi
-			prev =prev +  sumi.shape[1]
+			if self.side == 1:
+				truckMatrice[0:truckMatrice.shape[0], prev:prev + sumi.shape[1]] = sumi
+				prev = prev + sumi.shape[1]
+			elif self.side == 0:
+				truckMatrice[0:truckMatrice.shape[0], prev - sumi.shape[1]:prev] = sumi
+				prev = prev - sumi.shape[1]
+			
 		blurred = median_filter(truckMatrice, size = 8)
 
 		plt.imshow(truckMatrice)
 		plt.show()
-		plt.imshow(blurred)
-		plt.show()
-
+		
 class Piece():
 	def __init__(self):
 		self.x = -1
 		self.length = -1
 		self.otherViews = []
 
-	def start(self, x, len, view):
-		self.x = x
-		self.length = len
-		self.otherViews.append(view.cropWindowPart(self.x, view.map.shape[1]))
+	def start(self, x, len, view, side):
+		print(x, len, side)
+		if side == 1:
+			self.x = x
+			self.length = len
+			self.otherViews.append(view.cropWindowPart(self.x, view.map.shape[1]))
+			plt.imshow(self.otherViews[-1])
+			#plt.show()
+			plt.imshow(view.map)
+			#plt.show()
+			
+		if side == 0:
+			self.x = x
+			self.length = len
+			self.otherViews.append(view.cropWindowPart(0, self.x))
+			plt.imshow(self.otherViews[-1])
+			#plt.show()
+			plt.imshow(view.map)
+			#plt.show()
 		
-	def update(self, delta, map):
-		#SIGN
-		self.x = self.x + delta
-		
-		if self.x < 0:
-			self.x = 0
-			self.length = self.length + delta
 
-		crop = map.cropWindowPart(self.x, self.x + self.length)
-		self.otherViews.append(crop)
+		
+	def update(self, delta, map, side):
+		#SIGN
+		if side == 1:
+			self.x = self.x + delta
+			
+			if self.x < 0:
+				self.x = 0
+				self.length = self.length + delta
+			print(delta, self.x, self.length)
+			#plt.imshow(map.map)
+			#plt.show()
+			
+			crop = map.cropWindowPart(self.x, self.x + self.length)
+			#plt.imshow(crop)
+			#plt.show()
+			self.otherViews.append(crop)
+		
+		if side == 0:
+			self.x = self.x + delta
+			if self.x + self.length > map.map.shape[1]:
+				self.length = map.map.shape[1] - self.x
+			print(delta, self.x, self.length)
+			#plt.imshow(map.map)
+			#plt.show()
+			crop = map.cropWindowPart(self.x, self.x + self.length)
+			#plt.show()
+			self.otherViews.append(crop)
 			
 
-def constructContrs(n):
+def constructContrs(n, offset):
 	c = 0
 	imagesList = []
 	for i in os.listdir("img/image/"):
 		if c > n:
 			break
+
 		c = c + 1
+		if c < offset:
+			continue
 		im = MapFrameType(i.split(".")[0], "img/image/", "img/array10/")
 		imagesList.append(im)
 	framePairs = []
@@ -571,34 +629,52 @@ def constructContrs(n):
 
 	for pair in framePairs:
 		matcher = Matcher()
+		#pair[0].frame.showFrame()
+		#plt.show()
+		#cv.waitKey(0)
+		#pair[1].frame.showFrame()
+		#cv.waitKey(0)
+		#plt.show()
 		matcher.compareTwoFrame(pair[0], pair[1])
 		
 		if initFrames:
 			matcher.findCountoursOftruck()
+			matcher.calcMapShift()
 			piece = Piece()
-			piece.start(matcher.contourCoor[0], matcher.map2.map.shape[1] - matcher.contourCoor[0], matcher.map2)
+			#print("INIT", matcher.sideWhereMoveingFrom, matcher.contourCoor, matcher.delta)
+			if matcher.sideWhereMoveingFrom == 1:
+				piece.start(matcher.contourCoor[0], matcher.map2.map.shape[1] - matcher.contourCoor[0], matcher.map2, matcher.sideWhereMoveingFrom)
+			elif matcher.sideWhereMoveingFrom == 0:
+				piece.start(matcher.contourCoor[1], abs(matcher.delta), matcher.map2, matcher.sideWhereMoveingFrom)
 			
 			truck.initPiece(piece)
+			truck.side = matcher.sideWhereMoveingFrom
 			initFrames = False
 			continue
 		else:
 			matcher.contourCoor = prevCoor
 		
-		#matcher.calcMapShift()
+		matcher.calcMapShift()
 		#matcher.shiftCountourCoordinates()
 		piece = Piece()
 		#SIGN?
-		#print(matcher.delta)
-		piece.start(matcher.map2.map.shape[1] + matcher.delta, abs(matcher.delta), matcher.map2)
+		#print(matcher.delta, matcher.sideWhereMoveingFrom, matcher.contourCoor)
+		if matcher.sideWhereMoveingFrom == 1:
+			piece.start(matcher.map2.map.shape[1] + matcher.delta, abs(matcher.delta), matcher.map2, matcher.sideWhereMoveingFrom)
+		elif matcher.sideWhereMoveingFrom == 0:
+			piece.start(0 + matcher.delta, abs(matcher.delta), matcher.map2, matcher.sideWhereMoveingFrom)
 			
-		truck.update(matcher.map2, matcher.delta)
+		truck.update(matcher.map2, matcher.delta, matcher.sideWhereMoveingFrom)
 		truck.addPiece(piece)
 		prevCoor = matcher.contourCoor
+	print("END")
 	truck.assemblyTruck()
 	#truck.showTruck()
 	
-#mp = mapProcessor("img/")
-shadow = constructContrs(13)
+shadow = constructContrs(13, 0)
+
+shadow = constructContrs(37, 15)
+
 #shadow.showShadow()
 
 '''
