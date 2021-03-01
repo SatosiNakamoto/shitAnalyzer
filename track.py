@@ -254,6 +254,7 @@ class Matcher():
 		sumSpeed = 0
 		countOfChangedPoints = 0
 		directionSum = 0
+		#need to rewrite alghorithm
 		featuresVectors = []
 		for mat in retdescs:
 			img1_idx = mat.queryIdx
@@ -264,7 +265,7 @@ class Matcher():
 			
 			if abs(x2 - x1) < 5 and abs(y2 - y1) < 5:
 				continue
-			
+
 
 			self.perfectMatches.append(mat)
 			pathVectorLen = math.sqrt( (x2 - x1) * (x2-x1) + (y2-y1)*(y2-y1))
