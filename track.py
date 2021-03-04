@@ -202,23 +202,9 @@ class Matcher():
                             cv.circle(out, (int(x1), int(y1)), 4, (255, 0, 0), 1)
                             cv.circle(out, (int(x2) + cols1, int(y2)), 4, (255, 0, 0), 1)
                             cv.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (255, 0, 0), 1)
-                            #print(str(x1) + " " + str(y1) + "                 " + str(x2) + " " + str(y2))
-        #print(str(dx) + " " + str(dy))
-        #print(k)
-        #plt.show()
+
         medianX.append(np.median(dx))
         medianY.append(np.median(dy))
-
-        #print('x', stats.mode(dx), np.median(dx))
-        #print('y', stats.mode(dy), np.median(dy))
-        #print("-----------------")
-        #cv.line(out, (640 + int(self.delta), 0), (640 + int(self.delta), 480), (0, 255, 0), thickness=2)
-        #cv.imshow('Matched Features', out)
-
-
-        #plt.show()
-
-
         return out
 
     def compareTwoFrame(self, mapFrame1, mapFrame2):
@@ -262,6 +248,7 @@ class Matcher():
             self.delta = 0
         else:
             self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+
         #print("delta is" + str(self.delta))
         return self.perfectMatches
 
@@ -377,15 +364,16 @@ def findCountors(frame):
 
 
 
-
-array = "D:/svt/array12/"
-images = "D:/svt/image12/"
+array = "img/array10/"
+images = "img/image/"
 tmLast = 0
 lastImages = 0
 medianX = []
 medianY = []
 k = 0
-count = 1
+
+counterOfShowedTrucks = 0
+
 listDepthMap = []
 for i in os.listdir(images):
     tmNext = time.mktime(time.strptime(i[:19], '%d-%m-%Y-%H-%M-%S'))
@@ -416,13 +404,6 @@ for i in os.listdir(images):
             cv.imwrite(i, picture)
         medianX = []
         medianY = []
-        print("new images")
-        #plt.subplot(6, 8, count)
-        '''if count == 48:
-            plt.show()
-            count = 1
-        else:
-            count += 1'''
         listDepthMap = []
         k = 0
     listDepthMap.append(array + i[:-4] + ".txt")
