@@ -287,6 +287,10 @@ class Truck():
 			prev = truckMatrice.shape[1]
 		for sumi in sums:
 			if self.side == 1:
+				print(sumi.shape[0], sumi.shape[1], "   ", prev + sumi.shape[1])
+				m = truckMatrice[0:truckMatrice.shape[0], prev:prev + sumi.shape[1]]
+				if m.shape[0] != sumi.shape[0] or m.shape[1] != sumi.shape[1]:
+					continue
 				truckMatrice[0:truckMatrice.shape[0], prev:prev + sumi.shape[1]] = sumi
 				prev = prev + sumi.shape[1]
 			elif self.side == 0:
@@ -294,7 +298,7 @@ class Truck():
 				prev = prev - sumi.shape[1]
 		
 		self.truckMatrice = truckMatrice
-		blurred = median_filter(truckMatrice, size = 8)
+		#blurred = median_filter(truckMatrice, size = 8)
 
 
 class Piece():
@@ -335,14 +339,16 @@ class Piece():
 def app(n, offset):
 	c = 0
 	imagesList = []
-	for i in os.listdir("img/image/"):
+	for i in os.listdir("img2/image/"):
 		if c > n:
 			break
 
 		c = c + 1
 		if c < offset:
 			continue
-		im = MapFrameType(i.split(".")[0], "img/")
+		im = MapFrameType(i.split(".")[0], "img2/")
+		#im.frame.showFrame()
+		#cv.waitKey(0)
 		imagesList.append(im)
 	framePairs = []
 	for i in range(len(imagesList)):
@@ -376,6 +382,7 @@ def app(n, offset):
 		
 		matcher.calcMapShift()
 		piece = Piece()
+
 		if matcher.sideWhereMoveingFrom == 1:
 			piece.start(matcher.map2.map.shape[1] + matcher.delta, abs(matcher.delta), matcher.map2, matcher.sideWhereMoveingFrom)
 		elif matcher.sideWhereMoveingFrom == 0:
@@ -388,9 +395,9 @@ def app(n, offset):
 	truck.assemblyTruck()
 	#truck.showTruckPiecesbyItsParts()
 	truck.showTruck()
-shadow = app(13, 0)
+shadow = app(20, 0)
 
-shadow = app(37, 15)
+#shadow = app(37, 15)
 
 plt.show()
 cv.waitKey(0)
