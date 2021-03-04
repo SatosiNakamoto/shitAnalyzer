@@ -1,31 +1,11 @@
-import numpy as np
 from matplotlib import pyplot as plt
 import os
 import time
 import cv2 as cv
-from scipy import stats
-#from scipy.ndimage.filters import gaussian_filter, median_filter
 import math
-import numpy as np, statsmodels.api as sm
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
-'''
-from skimage.filters import median, gaussian, threshold_otsu, sobel
-from skimage.morphology import binary_erosion
-from skimage.filters import gaussian
-from skimage.segmentation import active_contour
-from skimage.color import rgb2gray
-from skimage import data
-from skimage.segmentation import slic
-from skimage.segmentation import mark_boundaries
-from skimage.util import img_as_float
-from skimage import io
-from skimage import measure
-from PIL import Image
-from skimage.measure import ransac
-from skimage.transform import FundamentalMatrixTransform
-'''
+
+
 upperBorder = 5700  # 5700
 bottomBorder = 1000
 signTrue = lambda a: (a > 0) - (a < 0)
@@ -265,9 +245,10 @@ class Matcher():
             countOfChangedPoints = countOfChangedPoints + 1
             directionSum = directionSum + sign(x2 - x1)
         if countOfChangedPoints == 0:
-        	self.delta = 0	
+            self.delta = 0
         else:
-	        self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+
         #print("delta is" + str(self.delta))
         return self.perfectMatches
 
@@ -317,8 +298,9 @@ class Matcher():
 
 
 def paintDepthMap(biasX, biasY, listDepthMapPath):
-    print(listDepthMapPath)
+    #print(listDepthMapPath)
     endDepthMap = np.zeros((1500, 3000))
+    endMask = np.zeros((1500, 3000))
     x = 0
     y = 0
     if biasX > 0:
@@ -328,22 +310,35 @@ def paintDepthMap(biasX, biasY, listDepthMapPath):
     biasY = int(-1 * biasY)
     for depthMapPath in listDepthMapPath:
         depthMap = np.loadtxt(depthMapPath)
-        #findCountors(depthMap) эта штука убирает шум, но пока не так как хотелось бы
         for i in range(depthMap.shape[0]):
             for j in range(depthMap.shape[1]):
                 if endDepthMap[i + y][j + x] == 0:
                     endDepthMap[i + y][j + x] = depthMap[i][j]
-                if endDepthMap[i + y][j + x] != 0 and depthMap[i][j] != 0:
-                    endDepthMap[i + y][j + x] = (endDepthMap[i + y][j + x] + depthMap[i][j]) / 2
+                elif endDepthMap[i + y][j + x] != 0 and depthMap[i][j] != 0:
+                    endDepthMap[i + y][j + x] = depthMap[i][j]
+        mask = findCountors(depthMap.copy())
+        for i in range(mask.shape[0]):
+            for j in range(mask.shape[1]):
+                if endMask[i + y][j + x] == 0:
+                    endMask[i + y][j + x] = mask[i][j][0]
+                elif endMask[i + y][j + x] != 0 and mask[i][j][0] != 0:
+                    endMask[i + y][j + x] = mask[i][j][0]
         x += biasX
         y += biasY
-    endDepthMap[endDepthMap > 6800] = 0
-    plt.imshow(endDepthMap, interpolation='nearest')
-    plt.show()
+    for i in range(endDepthMap.shape[0]):
+        for j in range(endDepthMap.shape[1]):
+            if endMask[i][j] == 0:
+                endDepthMap[i][j] = 0
+    endDepthMap[endDepthMap > 7000] = 0
+    return endDepthMap
+    #plt.subplot(1, 2, 1)
+    #plt.imshow(endDepthMap, interpolation='nearest')
+    #plt.subplot(1, 2, 2)
+    #plt.imshow(endMask, interpolation='nearest')
+    #plt.show()
 
 
-def findCountors(array):
-    frame = array.copy()
+def findCountors(frame):
     x = np.mean(frame)
     frame[frame <= 1] = 0.0
     frame[frame > x] = 0.0
@@ -359,15 +354,13 @@ def findCountors(array):
         if cv.contourArea(contour) > sq:
             sq = cv.contourArea(contour)
             m = contour
-            r, t, w, h = cv.boundingRect(m)
     x[x < 256] = 0
     cv.fillConvexPoly(x, cv.convexHull(m), color=(255, 255, 255))
-    #plt.imshow(array, interpolation='nearest')
-    #plt.show()
     for i in range(frame.shape[0]):
         for j in range(frame.shape[1]):
             if x[i][j][0] == 0:
-                array[i][j] = 0
+                frame[i][j] = 0
+    return x
 
 
 
@@ -378,7 +371,9 @@ lastImages = 0
 medianX = []
 medianY = []
 k = 0
+
 counterOfShowedTrucks = 0
+
 listDepthMap = []
 for i in os.listdir(images):
     tmNext = time.mktime(time.strptime(i[:19], '%d-%m-%Y-%H-%M-%S'))
@@ -404,11 +399,11 @@ for i in os.listdir(images):
         #print(medianX, x)  # х
         #print(medianY, y)  # y
         if len(listDepthMap) != 0:
-            paintDepthMap(x, y, listDepthMap)
-        plt.show()
+            picture = paintDepthMap(x, y, listDepthMap)
+            picture = picture / np.max(picture) * 255
+            cv.imwrite(i, picture)
         medianX = []
         medianY = []
-        print("NEW IMAGES")
         listDepthMap = []
         k = 0
     listDepthMap.append(array + i[:-4] + ".txt")
