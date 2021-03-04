@@ -1,31 +1,11 @@
-import numpy as np
 from matplotlib import pyplot as plt
 import os
 import time
 import cv2 as cv
-from scipy import stats
-#from scipy.ndimage.filters import gaussian_filter, median_filter
 import math
-import numpy as np, statsmodels.api as sm
 import numpy as np
-import pandas as pd
-from tqdm import tqdm
-'''
-from skimage.filters import median, gaussian, threshold_otsu, sobel
-from skimage.morphology import binary_erosion
-from skimage.filters import gaussian
-from skimage.segmentation import active_contour
-from skimage.color import rgb2gray
-from skimage import data
-from skimage.segmentation import slic
-from skimage.segmentation import mark_boundaries
-from skimage.util import img_as_float
-from skimage import io
-from skimage import measure
-from PIL import Image
-from skimage.measure import ransac
-from skimage.transform import FundamentalMatrixTransform
-'''
+
+
 upperBorder = 5700  # 5700
 bottomBorder = 1000
 signTrue = lambda a: (a > 0) - (a < 0)
@@ -278,7 +258,10 @@ class Matcher():
             sumSpeed = sumSpeed + pathVectorLen
             countOfChangedPoints = countOfChangedPoints + 1
             directionSum = directionSum + sign(x2 - x1)
-        self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+        if countOfChangedPoints == 0:
+            self.delta = 0
+        else:
+            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
         #print("delta is" + str(self.delta))
         return self.perfectMatches
 
@@ -328,7 +311,7 @@ class Matcher():
 
 
 def paintDepthMap(biasX, biasY, listDepthMapPath):
-    print(listDepthMapPath)
+    #print(listDepthMapPath)
     endDepthMap = np.zeros((1500, 3000))
     endMask = np.zeros((1500, 3000))
     x = 0
@@ -346,7 +329,7 @@ def paintDepthMap(biasX, biasY, listDepthMapPath):
                     endDepthMap[i + y][j + x] = depthMap[i][j]
                 elif endDepthMap[i + y][j + x] != 0 and depthMap[i][j] != 0:
                     endDepthMap[i + y][j + x] = depthMap[i][j]
-        mask = findCountors(depthMap.copy()) #эта штука убирает шум, но пока не так как хотелось бы
+        mask = findCountors(depthMap.copy())
         for i in range(mask.shape[0]):
             for j in range(mask.shape[1]):
                 if endMask[i + y][j + x] == 0:
@@ -355,17 +338,17 @@ def paintDepthMap(biasX, biasY, listDepthMapPath):
                     endMask[i + y][j + x] = mask[i][j][0]
         x += biasX
         y += biasY
-
     for i in range(endDepthMap.shape[0]):
         for j in range(endDepthMap.shape[1]):
             if endMask[i][j] == 0:
                 endDepthMap[i][j] = 0
     endDepthMap[endDepthMap > 7000] = 0
+    return endDepthMap
     #plt.subplot(1, 2, 1)
-    plt.imshow(endDepthMap, interpolation='nearest')
+    #plt.imshow(endDepthMap, interpolation='nearest')
     #plt.subplot(1, 2, 2)
     #plt.imshow(endMask, interpolation='nearest')
-    plt.show()
+    #plt.show()
 
 
 def findCountors(frame):
@@ -402,6 +385,7 @@ lastImages = 0
 medianX = []
 medianY = []
 k = 0
+count = 1
 listDepthMap = []
 for i in os.listdir(images):
     tmNext = time.mktime(time.strptime(i[:19], '%d-%m-%Y-%H-%M-%S'))
@@ -415,7 +399,7 @@ for i in os.listdir(images):
             matcher.findCountoursOftruck()
             matcher.drawMatches()
             matcher.calcMapShift()
-            matcher.mapShif.showMap()
+            #matcher.mapShif.showMap()
             matcher.contourCoor
             lastImages = i
         else:
@@ -424,14 +408,21 @@ for i in os.listdir(images):
     else:
         x = np.median(medianX[1:7])
         y = np.median(medianY[1:7])
-        print(medianX, x)  # х
-        print(medianY, y)  # y
+        #print(medianX, x)  # х
+        #print(medianY, y)  # y
         if len(listDepthMap) != 0:
-            paintDepthMap(x, y, listDepthMap)
-        plt.show()
+            picture = paintDepthMap(x, y, listDepthMap)
+            picture = picture / np.max(picture) * 255
+            cv.imwrite(i, picture)
         medianX = []
         medianY = []
         print("new images")
+        #plt.subplot(6, 8, count)
+        '''if count == 48:
+            plt.show()
+            count = 1
+        else:
+            count += 1'''
         listDepthMap = []
         k = 0
     listDepthMap.append(array + i[:-4] + ".txt")
