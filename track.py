@@ -25,7 +25,6 @@ from itertools import tee
 defaultHeight = 480
 defaultWidth  = 640
 
-
 def sign(a):
 	if a > 0:
 		return 1
@@ -110,7 +109,7 @@ class Matcher():
  		
  		#make own wrapper?...[x1,y1,x2,y2]
  		self.contourCoor = None
- 		self.deltaVect = (0,0)
+ 		self.deltaVect = [0,0]
 
 	def drawMatches(self):
 		rows1 = self.img1.shape[0]
@@ -164,7 +163,9 @@ class Matcher():
 		sumSpeed = 0
 		countOfChangedPoints = 0
 		directionSum = 0
-
+		
+		deltaVectori = (0,0)
+		vectorsSum = [0,0]
 		#need to rewrite alghorithm
 		for mat in goodMathcesDescriptors:
 			img1_idx = mat.queryIdx
@@ -175,13 +176,20 @@ class Matcher():
 			
 			if abs(x2 - x1) < trshf and abs(y2 - y1) < trshf:
 				continue
+			
+			deltaVectori = (x2-x1, y2-y1)
+			vectorsSum[0] += deltaVectori[0]
+			vectorsSum[1] += deltaVectori[1]
 
 			self.perfectMatches.append(mat)
 			pathVectorLen = math.sqrt( (x2 - x1) * (x2-x1) + (y2-y1)*(y2-y1))
 			sumSpeed = sumSpeed + pathVectorLen
 			countOfChangedPoints = countOfChangedPoints + 1
 			directionSum = directionSum + sign(x2-x1)
-		
+
+		self.deltaVect[0] = vectorsSum[0]/countOfChangedPoints
+		self.deltaVect[1] = vectorsSum[1]/countOfChangedPoints
+
 		self.delta = int(sumSpeed/countOfChangedPoints) * sign(directionSum)
 		return self.perfectMatches
 	
@@ -220,11 +228,10 @@ class Matcher():
 
 	def shiftCountourCoordinates(self):
 		resCoor = []
-		for i in self.contourCoor:
-			i = i + self.delta
-			resCoor.append(i)
-		self.contourCoor = resCoor
-
+		self.contourCoor[0] += self.deltaVect[0]
+		self.contourCoor[1] += self.deltaVect[1]
+		self.contourCoor[2] += self.deltaVect[0]
+		self.contourCoor[3] += self.deltaVect[1]
 
 class Truck():
 	def __init__(self):
@@ -254,6 +261,7 @@ class Truck():
 
 	def assemblyTruck(self):
 		sums = []
+		print(self.side)
 		self.truckLen = 1100
 		truckMatrice = np.ndarray(shape=(defaultHeight, self.truckLen), dtype=float, order='F')
 		constructed = sumV = self.pieces[0].otherViews[0]
@@ -266,7 +274,6 @@ class Truck():
 				if self.side == 1:
 					if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
 						continue
-
 					sumV[0:sumV.shape[0], sumV.shape[1]-self.pieces[pi].otherViews[vi+1].shape[1]:sumV.shape[1]] += self.pieces[pi].otherViews[vi+1]
 				if self.side == 0:
 					if self.pieces[pi].otherViews[vi+1].shape[1] > sumV.shape[1]:
@@ -325,7 +332,7 @@ class Piece():
 			self.otherViews.append(crop)
 
 
-def constructContrs(n, offset):
+def app(n, offset):
 	c = 0
 	imagesList = []
 	for i in os.listdir("img/image/"):
@@ -379,11 +386,11 @@ def constructContrs(n, offset):
 		prevCoor = matcher.contourCoor
 	print("END")
 	truck.assemblyTruck()
+	#truck.showTruckPiecesbyItsParts()
 	truck.showTruck()
-	
-shadow = constructContrs(13, 0)
+shadow = app(13, 0)
 
-shadow = constructContrs(37, 15)
+shadow = app(37, 15)
 
 plt.show()
 cv.waitKey(0)
