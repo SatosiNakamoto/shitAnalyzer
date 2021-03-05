@@ -146,9 +146,9 @@ class Matcher():
             countOfChangedPoints = countOfChangedPoints + 1
             directionSum = directionSum + sign(x2 - x1)
         if countOfChangedPoints == 0:
-        	self.delta = 0	
+            self.delta = 0
         else:
-	        self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
 
         return self.perfectMatches
 
