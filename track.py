@@ -5,6 +5,7 @@ import cv2 as cv
 import math
 import numpy as np
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 
@@ -12,6 +13,8 @@ upperBorder = 5700  # 5700
 bottomBorder = 1000
 signTrue = lambda a: (a > 0) - (a < 0)
 >>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
+=======
+>>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
 
 
 def sign(a):
@@ -157,6 +160,7 @@ class Matcher():
             self.delta = 0
         else:
 <<<<<<< HEAD
+<<<<<<< HEAD
 	        self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
 
 =======
@@ -164,6 +168,10 @@ class Matcher():
 
         #print("delta is" + str(self.delta))
 >>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
+=======
+            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
+
+>>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
         return self.perfectMatches
 
     def findCountoursOftruck(self):
@@ -213,6 +221,9 @@ class Matcher():
             (x2, y2) = self.kp2[img2_idx].pt
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
             if self.contourCoor[0] < x1 < self.contourCoor[2]:
                 if self.contourCoor[0] < x2 < self.contourCoor[2]:
                     if self.contourCoor[1] < y1 < self.contourCoor[3]:
@@ -372,6 +383,7 @@ class Application():
 		    self.listDepthMap.append(self.arrayPath + i[:-4] + ".txt")
 		    tmLast = tmNext
 Application("img/array10/", "img/image/").run()
+<<<<<<< HEAD
 print("lool")
 =======
 def paintDepthMap(biasX, biasY, listDepthMapPath):
@@ -486,3 +498,6 @@ for i in os.listdir(images):
     listDepthMap.append(array + i[:-4] + ".txt")
     tmLast = tmNext
 >>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
+=======
+print("lol")
+>>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
