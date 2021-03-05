@@ -247,7 +247,7 @@ class Truck():
 		if self.biasX > 0:
 			x = 1500
 			y = 0
-			
+
 		for depthMapPath in self.listDepthMapPath:
 			depthMap = np.loadtxt(depthMapPath)
 			mask = self.findCountors(depthMap.copy())
