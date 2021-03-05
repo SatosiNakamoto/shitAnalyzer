@@ -357,4 +357,4 @@ class Application():
 		    self.listDepthMap.append(self.arrayPath + i[:-4] + ".txt")
 		    tmLast = tmNext
 Application("img/array10/", "img/image/").run()
-print("lol")
+print("lool")
