@@ -4,18 +4,6 @@ import time
 import cv2 as cv
 import math
 import numpy as np
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
-
-upperBorder = 5700  # 5700
-bottomBorder = 1000
-signTrue = lambda a: (a > 0) - (a < 0)
->>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
-=======
->>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
-
 
 def sign(a):
     if a > 0:
@@ -159,19 +147,7 @@ class Matcher():
         if countOfChangedPoints == 0:
             self.delta = 0
         else:
-<<<<<<< HEAD
-<<<<<<< HEAD
 	        self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
-
-=======
-            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
-
-        #print("delta is" + str(self.delta))
->>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
-=======
-            self.delta = int(sumSpeed / countOfChangedPoints) * sign(directionSum)
-
->>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
         return self.perfectMatches
 
     def findCountoursOftruck(self):
@@ -220,10 +196,6 @@ class Matcher():
             (x1, y1) = self.kp1[img1_idx].pt
             (x2, y2) = self.kp2[img2_idx].pt
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
             if self.contourCoor[0] < x1 < self.contourCoor[2]:
                 if self.contourCoor[0] < x2 < self.contourCoor[2]:
                     if self.contourCoor[1] < y1 < self.contourCoor[3]:
@@ -383,121 +355,4 @@ class Application():
 		    self.listDepthMap.append(self.arrayPath + i[:-4] + ".txt")
 		    tmLast = tmNext
 Application("img/array10/", "img/image/").run()
-<<<<<<< HEAD
 print("lool")
-=======
-def paintDepthMap(biasX, biasY, listDepthMapPath):
-    #print(listDepthMapPath)
-    endDepthMap = np.zeros((1500, 3000))
-    endMask = np.zeros((1500, 3000))
-    x = 0
-    y = 0
-    if biasX > 0:
-        x = 1500
-        y = 0
-    biasX = int(-1 * biasX)
-    biasY = int(-1 * biasY)
-    for depthMapPath in listDepthMapPath:
-        depthMap = np.loadtxt(depthMapPath)
-        for i in range(depthMap.shape[0]):
-            for j in range(depthMap.shape[1]):
-                if endDepthMap[i + y][j + x] == 0:
-                    endDepthMap[i + y][j + x] = depthMap[i][j]
-                elif endDepthMap[i + y][j + x] != 0 and depthMap[i][j] != 0:
-                    endDepthMap[i + y][j + x] = depthMap[i][j]
-        mask = findCountors(depthMap.copy())
-        for i in range(mask.shape[0]):
-            for j in range(mask.shape[1]):
-                if endMask[i + y][j + x] == 0:
-                    endMask[i + y][j + x] = mask[i][j][0]
-                elif endMask[i + y][j + x] != 0 and mask[i][j][0] != 0:
-                    endMask[i + y][j + x] = mask[i][j][0]
-        x += biasX
-        y += biasY
-    for i in range(endDepthMap.shape[0]):
-        for j in range(endDepthMap.shape[1]):
-            if endMask[i][j] == 0:
-                endDepthMap[i][j] = 0
-    endDepthMap[endDepthMap > 7000] = 0
-    return endDepthMap
-    #plt.subplot(1, 2, 1)
-    #plt.imshow(endDepthMap, interpolation='nearest')
-    #plt.subplot(1, 2, 2)
-    #plt.imshow(endMask, interpolation='nearest')
-    #plt.show()
-
-
-def findCountors(frame):
-    x = np.mean(frame)
-    frame[frame <= 1] = 0.0
-    frame[frame > x] = 0.0
-    frame[frame > 0] = 255.0
-    cv.imwrite("test.jpg", frame)
-    x = cv.imread("test.jpg")
-    imgray = cv.cvtColor(x, cv.COLOR_BGR2GRAY)
-    imgray = cv.GaussianBlur(imgray, (3, 3), 0)
-    contours, hierarchy = cv.findContours(imgray, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    sq = 0
-    m = []
-    for contour in contours:
-        if cv.contourArea(contour) > sq:
-            sq = cv.contourArea(contour)
-            m = contour
-    x[x < 256] = 0
-    cv.fillConvexPoly(x, cv.convexHull(m), color=(255, 255, 255))
-    for i in range(frame.shape[0]):
-        for j in range(frame.shape[1]):
-            if x[i][j][0] == 0:
-                frame[i][j] = 0
-    return x
-
-
-
-array = "img/array10/"
-images = "img/image/"
-tmLast = 0
-lastImages = 0
-medianX = []
-medianY = []
-k = 0
-
-counterOfShowedTrucks = 0
-
-listDepthMap = []
-for i in os.listdir(images):
-    tmNext = time.mktime(time.strptime(i[:19], '%d-%m-%Y-%H-%M-%S'))
-    if (tmNext < tmLast + 5):
-        if k != 0:
-            mf1 = MapFrameType(i[:-4], images, array)
-            mf2 = MapFrameType(lastImages[:-4], images, array)
-            matcher = Matcher()
-            matchesList = matcher.compareTwoFrame(mf1, mf2)
-            cv.waitKey(0)
-            matcher.findCountoursOftruck()
-            matcher.drawMatches()
-            matcher.calcMapShift()
-            #matcher.mapShif.showMap()
-            matcher.contourCoor
-            lastImages = i
-        else:
-            lastImages = i
-            k = 1
-    else:
-        x = np.median(medianX[1:7])
-        y = np.median(medianY[1:7])
-        #print(medianX, x)  # х
-        #print(medianY, y)  # y
-        if len(listDepthMap) != 0:
-            picture = paintDepthMap(x, y, listDepthMap)
-            picture = picture / np.max(picture) * 255
-            cv.imwrite(i, picture)
-        medianX = []
-        medianY = []
-        listDepthMap = []
-        k = 0
-    listDepthMap.append(array + i[:-4] + ".txt")
-    tmLast = tmNext
->>>>>>> 43c2044ceba61c70cd5a5ac7102ab495b9c19158
-=======
-print("lol")
->>>>>>> 6dd7a84516c34f29bb1c20814a7d221dac4883cf
