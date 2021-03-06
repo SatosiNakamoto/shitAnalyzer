@@ -76,7 +76,6 @@ class Frame():
 class Matcher():
     listForMedianX = [] #static variable - для всех матчеров
     listForMedianY = []
-
     def __init__(self):
         self.bf = cv.BFMatcher(cv.NORM_HAMMING)
        
@@ -206,75 +205,117 @@ class Matcher():
         Matcher.listForMedianX.append(np.median(self.dxList))
         Matcher.listForMedianY.append(np.median(self.dyList))
 
+    def getTotalMotionVector():
+    	Matcher.motionVector = [0,0]
+    	for i in Matcher.listForMedianX:
+    		Matcher.motionVector[0] += i
+    	for i in Matcher.listForMedianY:
+    		Matcher.motionVector[1] += i
+
 
 class Truck():
-	def __init__(self, mapsList, biasX, biasY, endMapSizeX = 1500, endMapSizeY = 3000):
+	def __init__(self, mapsList, biasX, biasY, sideMoveTo ,endMapSizeX = 700, endMapSizeY = 1800):
+		if sideMoveTo == 0:
+			sideMoveTo = 1
+		elif sideMoveTo == 1:
+			sideMoveTo = -1
+
+		self.sideTruckMoveingTo = sideMoveTo
 		self.listDepthMapPath = mapsList
+		self.endMapSizeX = endMapSizeX
+		self.endMapSizeY = endMapSizeY 
 		self.endTruckDepthMap = np.zeros((endMapSizeX, endMapSizeY))
-		self.endTruckMask = np.zeros((1500, 3000))
-		self.biasX = int(-biasX)
-		self.biasY = int(-biasY)
-	
+		self.endTruckMask = np.zeros((endMapSizeX, endMapSizeY))
+		self.biasX = int(sideMoveTo * abs(biasX))
+		self.biasY = int(sideMoveTo * abs(biasY))
+		self.width = -1
+		self.treshFilter = 7000
+
 	def showTruckMap(self):
 		plt.imshow(self.endTruckDepthMap)
 		plt.show()
 
 	def createTruckDepthMap(self):
+
 		x = 0
 		y = 0
-
-		if self.biasX > 0:
-			x = 1500
-			y = 0
-
+		if self.sideTruckMoveingTo == -1:
+			x = x + self.endMapSizeX + 120
+		print("sideTruckMoveingTo - ", self.sideTruckMoveingTo)
+		#if self.sideTruckMoveingTo == 1:
+		#	x = 0
+		#	y = 0
+		#else:
+		#	x = Application.standartWindowWeight
+		#	x = Application.standartWindowWeight
+		
+		#то что закоменчено нижу - другой вариант алгоритма (сдвиг не по медиане всех перемещений, а по каждому конкретному перемещению). (по другому меняем x и y)
+		#c = -1
+		
 		for depthMapPath in self.listDepthMapPath:
 			depthMap = np.loadtxt(depthMapPath)
+			print(x,y)
 			
-			for i in range(depthMap.shape[0]):
-				for j in range(depthMap.shape[1]):
+			firstDim = range(depthMap.shape[0])
+			secondDim = range(depthMap.shape[1])
+			#if self.sideTruckMoveingTo == -1:
+				#firstDim = reversed(firstDim)
+				#secondDim = reversed(secondDim)
+				#x = x + 200
+
+			for i in firstDim:
+				for j in secondDim:
+					if j + x >= self.endMapSizeY or i + y >= self.endMapSizeX:
+						continue
 					if self.endTruckDepthMap[i + y][j + x] == 0:
 						self.endTruckDepthMap[i + y][j + x] = depthMap[i][j]
 					elif self.endTruckDepthMap[i + y][j + x] != 0 and depthMap[i][j] != 0:
 						self.endTruckDepthMap[i + y][j + x] = (self.endTruckDepthMap[i + y][j + x] + depthMap[i][j]) / 2
-			x += self.biasX
-			y += self.biasY
+			#c = c + 1
+			x += self.biasX #
+			y += self.biasY #
+			#if c >= len(Matcher.listForMedianX) or c >= len(Matcher.listForMedianX):
+			#	continue
+			#x -= int(Matcher.listForMedianX[c])
+			#y -= int(Matcher.listForMedianY[c])
 
 	def setTruckDepthMask(self):
 		x = 0
 		y = 0
-		if self.biasX > 0:
-			x = 1500
-			y = 0
+	
+		#то что закоменчено - другой вариант алгоритма (сдвиг не по медиане всех перемещений, а по каждому конкретному перемещению). (по другому меняем x и y)
+		#c = -1
 
 		for depthMapPath in self.listDepthMapPath:
 			depthMap = np.loadtxt(depthMapPath)
 			mask = self.findCountors(depthMap.copy())
-			for i in range(mask.shape[0]):
-				for j in range(mask.shape[1]):
+			
+			firstDim = range(mask.shape[0])
+			secondDim = range(mask.shape[1])
+
+			for i in firstDim:
+				for j in secondDim:
+					if j + x >= self.endMapSizeY or i + y >= self.endMapSizeX:
+						continue
 					if self.endTruckMask[i + y][j + x] == 0:
 						self.endTruckMask[i + y][j + x] = mask[i][j][0]
 					elif self.endTruckMask[i + y][j + x] != 0 and mask[i][j][0] != 0:
 						self.endTruckMask[i + y][j + x] = mask[i][j][0]
-			x += self.biasX
-			y += self.biasY
-			
-		print("before")
-		m  = self.endTruckDepthMap.copy()
-		plt.imshow(m)
-		plt.show()
-
-		print("mask")
+			x += self.biasX #
+			y += self.biasY #
+			#c = c + 1
+			#print(c)
+			#if c >= len(Matcher.listForMedianX) or c >= len(Matcher.listForMedianX):
+			#	continue
+			#x += Matcher.listForMedianX[c]
+			#y += Matcher.listForMedianY[c]
 		plt.imshow(self.endTruckMask)
 		plt.show()
-
 		for i in range(self.endTruckMask.shape[0]):
 			for j in range(self.endTruckMask.shape[1]):
 					if self.endTruckMask[i][j] == 0:
-						m[i][j] = 0
-		print("after")
-		plt.imshow(m)
-		plt.show()
-		self.endTruckDepthMap[self.endTruckDepthMap > 7000] = 0
+						self.endTruckDepthMap[i][j] = 0
+		self.endTruckDepthMap[self.endTruckDepthMap > self.treshFilter] = 0
 
 	def findCountors(self, frame):
 	    x = np.mean(frame)
@@ -301,17 +342,19 @@ class Truck():
 	                frame[i][j] = 0
 	    return x
 	
-	def getTruckWeight(self):
-		return -1
+	def getTruckWidth(self):
+		self.width = np.sum(self.endTruckDepthMap)/(self.endTruckDepthMap.shape[0] * self.endTruckDepthMap.shape[1])
 
 
 class Application():
+	standartWindowHeight = 480
+	standartWindowWeight = 640
+		
 	def __init__(self, arrayPath, imagePath):
 		self.arrayPath = arrayPath
 		self.imagePath = imagePath
 		self.writeMode = False
 		self.listDepthMap = []
-
 
 	def run(self):
 		tmLast = 0
@@ -337,11 +380,13 @@ class Application():
 		        y = np.median(Matcher.listForMedianY[1:7])
 		        
 		        if len(self.listDepthMap) != 0:
-		            tr = Truck(self.listDepthMap, x, y)
+		            Matcher.getTotalMotionVector()
+		            tr = Truck(self.listDepthMap, x, y, matcher.sideWhereMoveingFrom, Application.standartWindowHeight + int(abs(Matcher.motionVector[1])), Application.standartWindowWeight + int(abs(Matcher.motionVector[0])))
 		            tr.createTruckDepthMap()
-		            tr.showTruckMap()
 		            tr.setTruckDepthMask()
 		            tr.showTruckMap()
+		            tr.getTruckWidth()
+		            print("WIDTH IS - ", tr.width)
 		            
 
 		            #picture = paintDepthMap(x, y, listDepthMap)
@@ -354,5 +399,7 @@ class Application():
 		        k = 0
 		    self.listDepthMap.append(self.arrayPath + i[:-4] + ".txt")
 		    tmLast = tmNext
+
+
 Application("img/array10/", "img/image/").run()
 print("lool")
