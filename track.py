@@ -251,7 +251,7 @@ class Truck():
             
             #plt.imshow(bigMapForDepthMap)
             #plt.show()
-            
+            '''
             for i in firstDim:
                 for j in secondDim:
                     frameShiftX = int(j + x + round(self.acceleratedMovementX * count))
@@ -285,7 +285,7 @@ class Truck():
                 tempEndTruckDepthMap = self.endTruckDepthMap.copy()
                 self.endTruckDepthMap += m 
                 self.endTruckDepthMap[tempEndTruckDepthMap < self.endTruckDepthMap]/=2
-			'''
+			
             count += 1
             x += self.biasX
             y += self.biasY
